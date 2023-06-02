@@ -69,7 +69,8 @@ jobs:
 
       - run: go get github.com/bboreham/github-release@publish-command
 
-      - run: |
+      - name: pre release
+        run: |
           cd onnx;
           github-release release \
             --user ${{env.GIT_USER}} \
