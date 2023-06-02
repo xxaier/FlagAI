@@ -22,10 +22,6 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        model: [ AltCLIP-XLMR-L-m18,AltCLIP-XLMR-L-m9,AltCLIP-XLMR-L ]
-
     steps:
       -
         name: Checkout
@@ -67,7 +63,7 @@ jobs:
           build-args: |
             GIT=https://github.com/${{github.repository}}.git
 
-      - run: go get github.com/bboreham/github-release@publish-command
+      - run: go install github.com/bboreham/github-release@publish-command
 
       - name: pre release
         run: |
@@ -81,6 +77,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+
+
+  upload:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        model: [ AltCLIP-XLMR-L-m18,AltCLIP-XLMR-L-m9,AltCLIP-XLMR-L ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      -
+        name: Set Env
+        run: |
+          VERSION=$(cat onnx/version.txt)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          GIT_USER_REPO=${{github.repository}}
+          GIT_USER=${GIT_USER_REPO%%/*}
+          echo "GIT_USER=$GIT_USER" >> $GITHUB_ENV
+          GIT_REPO=${GIT_USER_REPO#*/}
+          echo "GIT_REPO=$GIT_REPO" >> $GITHUB_ENV
+          RELEASE=AltCLIP-ONNX-$VERSION
+          echo "RELEASE=$RELEASE" >> $GITHUB_ENV
+
+      - run: go install github.com/bboreham/github-release@publish-command
+
       - name: onnx
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -91,14 +113,27 @@ jobs:
           ./export.sh ./export/tar.bz2.py;
           file=${MODEL}-${{env.VERSION}}.tar.bz2
           mv onnx/${MODEL}.tar.bz2 $file
-          rm -rf onnx/$MODEL
           github-release upload \
             --user ${{env.GIT_USER}} \
             --repo ${{env.GIT_REPO}} \
             --name ${{env.RELEASE}} \
             --file $file
-          rm -rf $file
 
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Set Env
+        run: |
+          VERSION=$(cat onnx/version.txt)
+          GIT_USER_REPO=${{github.repository}}
+          GIT_USER=${GIT_USER_REPO%%/*}
+          echo "GIT_USER=$GIT_USER" >> $GITHUB_ENV
+          GIT_REPO=${GIT_USER_REPO#*/}
+          echo "GIT_REPO=$GIT_REPO" >> $GITHUB_ENV
+          RELEASE=AltCLIP-ONNX-$VERSION
+          echo "RELEASE=$RELEASE" >> $GITHUB_ENV
+      - run: go install github.com/bboreham/github-release@publish-command
       - name: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
