@@ -43,13 +43,14 @@ jobs:
           echo "TAG=$TAG" >> $GITHUB_ENV
 
       - name: Create tag
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           script: |
+            const {TAG} = process.env
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: 'refs/tags/${{env.TAG}}',
+              ref: `refs/tags/${TAG}`,
               sha: context.sha
             })
 
