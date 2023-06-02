@@ -23,6 +23,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
+
       -
         name: Checkout
         uses: actions/checkout@v3
@@ -38,7 +39,19 @@ jobs:
           echo "GIT_REPO=$GIT_REPO" >> $GITHUB_ENV
           RELEASE=AltCLIP-ONNX-$VERSION
           echo "RELEASE=$RELEASE" >> $GITHUB_ENV
+          TAG="AltCLIP-ONNX-$VERSION"
+          echo "TAG=$TAG" >> $GITHUB_ENV
 
+      - name: Create tag
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{env.TAG}}',
+              sha: context.sha
+            })
 
       - name: pre release
         run: |
@@ -48,6 +61,7 @@ jobs:
             --user ${{env.GIT_USER}} \
             --repo ${{env.GIT_REPO}} \
             --name ${{env.RELEASE}} \
+            --tag ${{env.TAG}} \
             --description "$(cat onnx/changelog/${{env.VERSION}}.txt)" \
             --pre-release
         env:
@@ -118,6 +132,7 @@ jobs:
             --user ${{env.GIT_USER}} \
             --repo ${{env.GIT_REPO}} \
             --name ${{env.RELEASE}} \
+            --tag ${{env.TAG}} \
             --file $file
 
   release:
@@ -144,6 +159,7 @@ jobs:
           github-release publish \
           --user ${{env.GIT_USER}} \
           --repo ${{env.GIT_REPO}} \
+          --tag ${{env.TAG}} \
           --name ${{env.RELEASE}}
 
 
