@@ -38,6 +38,21 @@ jobs:
           echo "GIT_REPO=$GIT_REPO" >> $GITHUB_ENV
           RELEASE=AltCLIP-ONNX-$VERSION
           echo "RELEASE=$RELEASE" >> $GITHUB_ENV
+
+
+      - name: pre release
+        run: |
+          go install github.com/bboreham/github-release@publish-command;
+          export PATH=$PATH:$(go env GOPATH)/bin;
+          github-release release \
+            --user ${{env.GIT_USER}} \
+            --repo ${{env.GIT_REPO}} \
+            --name ${{env.RELEASE}} \
+            --description "$(cat onnx/changelog/${{env.VERSION}}.txt)" \
+            --pre-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -63,21 +78,6 @@ jobs:
           build-args: |
             GIT=https://github.com/${{github.repository}}.git
 
-      - run: go install github.com/bboreham/github-release@publish-command
-
-      - name: pre release
-        run: |
-          cd onnx;
-          github-release release \
-            --user ${{env.GIT_USER}} \
-            --repo ${{env.GIT_REPO}} \
-            --name ${{env.RELEASE}} \
-            --description "$(cat changelog/${{env.VERSION}}.txt)" \
-            --pre-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
 
   upload:
     needs: docker
@@ -102,14 +102,14 @@ jobs:
           RELEASE=AltCLIP-ONNX-$VERSION
           echo "RELEASE=$RELEASE" >> $GITHUB_ENV
 
-      - run: go install github.com/bboreham/github-release@publish-command
-
       - name: onnx
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORG: ${{secrets.DOCKER_ORG}}
           MODEL: ${{matrix.MODEL}}
         run: |
+          go install github.com/bboreham/github-release@publish-command;
+          export PATH=$PATH:$(go env GOPATH)/bin;
           cd ./onnx;
           ./export.sh ./export/tar.bz2.py;
           file=${MODEL}-${{env.VERSION}}.tar.bz2
@@ -135,11 +135,13 @@ jobs:
           echo "GIT_REPO=$GIT_REPO" >> $GITHUB_ENV
           RELEASE=AltCLIP-ONNX-$VERSION
           echo "RELEASE=$RELEASE" >> $GITHUB_ENV
-      - run: go install github.com/bboreham/github-release@publish-command
       - name: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: github-release publish \
+        run: |
+          go install github.com/bboreham/github-release@publish-command;
+          export PATH=$PATH:$(go env GOPATH)/bin;
+          github-release publish \
           --user ${{env.GIT_USER}} \
           --repo ${{env.GIT_REPO}} \
           --name ${{env.RELEASE}}
