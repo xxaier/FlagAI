@@ -22,15 +22,26 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        model: [ AltCLIP-XLMR-L-m18,AltCLIP-XLMR-L-m9,AltCLIP-XLMR-L ]
+
     steps:
       -
         name: Checkout
         uses: actions/checkout@v3
       -
-        name: Set Version
+        name: Set Env
         run: |
           VERSION=$(cat onnx/version.txt)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          GIT_USER_REPO=${{github.repository}}
+          GIT_USER=${GIT_USER_REPO%%/*}
+          echo "GIT_USER=$GIT_USER" >> $GITHUB_ENV
+          GIT_REPO=${GIT_USER_REPO#*/}
+          echo "GIT_REPO=$GIT_REPO" >> $GITHUB_ENV
+          RELEASE=AltCLIP-ONNX-$VERSION
+          echo "RELEASE=$RELEASE" >> $GITHUB_ENV
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -56,60 +67,44 @@ jobs:
           build-args: |
             GIT=https://github.com/${{github.repository}}.git
 
-      - name: onnx AltCLIP-XLMR-L-m18
+      - run: go get github.com/bboreham/github-release@publish-command
+
+      - run: |
+          cd onnx;
+          github-release release \
+            --user ${{env.GIT_USER}} \
+            --repo ${{env.GIT_REPO}} \
+            --name ${{env.RELEASE}} \
+            --description "$(cat changelog/${{env.VERSION}}.txt)" \
+            --pre-release
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: onnx
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORG: ${{secrets.DOCKER_ORG}}
-          MODEL: AltCLIP-XLMR-L-m18
+          MODEL: ${{matrix.MODEL}}
         run: |
           cd ./onnx;
           ./export.sh ./export/tar.bz2.py;
-          mv onnx/AltCLIP-XLMR-L-m18.tar.bz2 AltCLIP-XLMR-L-m18-${{env.VERSION}}.tar.bz2
-          rm -rf onnx/*
+          file=${MODEL}-${{env.VERSION}}.tar.bz2
+          mv onnx/${MODEL}.tar.bz2 $file
+          rm -rf onnx/$MODEL
+          github-release upload \
+            --user ${{env.GIT_USER}} \
+            --repo ${{env.GIT_REPO}} \
+            --name ${{env.RELEASE}} \
+            --file $file
+          rm -rf $file
 
-      - name: Release AltCLIP-XLMR-L-m18
-        uses: softprops/action-gh-release@v1
-        with:
-          name: AltCLIP-ONNX-${{env.VERSION}}
-          files: |
-            onnx/AltCLIP-XLMR-L-m18-${{env.VERSION}}.tar.bz2
-
-      - run: rm -rf onnx/*.tar.bz2
-
-      - name: onnx AltCLIP-XLMR-L-m9
+      - name: release
         env:
-          ORG: ${{secrets.DOCKER_ORG}}
-          MODEL: AltCLIP-XLMR-L-m9
-        run: |
-          cd ./onnx;
-          ./export.sh ./export/tar.bz2.py;
-          mv onnx/AltCLIP-XLMR-L-m9.tar.bz2 AltCLIP-XLMR-L-m9-${{env.VERSION}}.tar.bz2
-          rm -rf onnx/*
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: github-release publish \
+          --user ${{env.GIT_USER}} \
+          --repo ${{env.GIT_REPO}} \
+          --name ${{env.RELEASE}}
 
-      - name: Release AltCLIP-XLMR-L-m9
-        uses: softprops/action-gh-release@v1
-        with:
-          name: AltCLIP-ONNX-${{env.VERSION}}
-          files: |
-            onnx/AltCLIP-XLMR-L-m9-${{env.VERSION}}.tar.bz2
 
-      - run: rm -rf onnx/*.tar.bz2
-
-      - name: onnx AltCLIP-XLMR-L
-        env:
-          ORG: ${{secrets.DOCKER_ORG}}
-          MODEL: AltCLIP-XLMR-L
-        run: |
-          cd ./onnx;
-          ./export.sh ./export/tar.bz2.py;
-          mv onnx/AltCLIP-XLMR-L.tar.bz2 AltCLIP-XLMR-L-${{env.VERSION}}.tar.bz2
-          rm -rf onnx/*
-
-      - name: Release AltCLIP-XLMR-L
-        uses: softprops/action-gh-release@v1
-        with:
-          name: AltCLIP-ONNX-${{env.VERSION}}
-          files: |
-            onnx/AltCLIP-XLMR-L-${{env.VERSION}}.tar.bz2
-
-      - run: rm -rf onnx/*.tar.bz2
 
